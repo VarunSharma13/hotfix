@@ -159,6 +159,15 @@ func applySavedConfig(cfg Config) error {
 	logf("settings: config saved (enabled=%v, threshold=%.0f%%, kill_after=%.0fs)",
 		cfg.Enabled, cfg.CPUThreshold, cfg.KillDuration)
 
+	// Apply the autostart toggle to the registry. Non-fatal: the config is
+	// already persisted, and loadConfig re-reads the real registry state next
+	// launch, so a failure here self-corrects rather than wedging the UI.
+	if err := setLaunchAtLogin(cfg.LaunchAtLogin); err != nil {
+		logf("settings: launch-at-login toggle failed: %v", err)
+	} else {
+		logf("settings: launch at login %v", cfg.LaunchAtLogin)
+	}
+
 	// The monitor goroutine is only launched at startup when enabled, so toggling
 	// Enabled here must start/stop it too. Both calls are idempotent.
 	if cfg.Enabled {

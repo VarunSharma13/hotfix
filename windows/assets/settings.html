@@ -615,6 +615,20 @@
         </div>
       </div>
 
+      <!-- Run at startup -->
+      <div class="row">
+        <div class="row-label">
+          <span>Run at Startup</span>
+          <small>Start Hotfix automatically when Windows starts</small>
+        </div>
+        <div class="row-control">
+          <label class="toggle" aria-label="Run at startup">
+            <input type="checkbox" id="launch-at-login" />
+            <div class="toggle-track"><div class="toggle-thumb"></div></div>
+          </label>
+        </div>
+      </div>
+
       <!-- CPU threshold -->
       <div class="row">
         <div class="row-label">
@@ -725,7 +739,7 @@
     <div class="about-body">
       <div class="about-item">
         <span class="about-item-label">Version</span>
-        <span class="about-item-value">1.0.11</span>
+        <span class="about-item-value">1.0.12</span>
       </div>
       <div class="about-item">
         <span class="about-item-label">Platform</span>
@@ -761,6 +775,7 @@
     kill_duration: 60,
     kill_on_sleep: true,
     protect_active_app: true,
+    launch_at_login: false,
     whitelist: []
   };
 
@@ -772,6 +787,7 @@
   const $killVal        = document.getElementById('kill-duration-val');
   const $killOnSleep    = document.getElementById('kill-on-sleep');
   const $protectActive  = document.getElementById('protect-active-app');
+  const $launchAtLogin  = document.getElementById('launch-at-login');
   const $wlList         = document.getElementById('whitelist-list');
   const $wlInput        = document.getElementById('wl-input');
   const $wlAddBtn       = document.getElementById('wl-add-btn');
@@ -807,6 +823,7 @@
     $killOnSleep.checked = !!cfg.kill_on_sleep;
     // Absent field (legacy config) defaults to ON, matching the Go migration.
     $protectActive.checked = cfg.protect_active_app !== false;
+    $launchAtLogin.checked = !!cfg.launch_at_login;
 
     $cpuSlider.value = cfg.cpu_threshold;
     $cpuVal.textContent = Math.round(cfg.cpu_threshold) + '%';
@@ -896,6 +913,7 @@
   $enabled.addEventListener('change', () => setStatus(''));
   $killOnSleep.addEventListener('change', () => setStatus(''));
   $protectActive.addEventListener('change', () => setStatus(''));
+  $launchAtLogin.addEventListener('change', () => setStatus(''));
 
   // ── Status message ──
   function setStatus(msg, isError) {
@@ -914,6 +932,7 @@
       kill_duration:      parseFloat($killSlider.value),
       kill_on_sleep:      $killOnSleep.checked,
       protect_active_app: $protectActive.checked,
+      launch_at_login:    $launchAtLogin.checked,
       whitelist:          config.whitelist
     };
 

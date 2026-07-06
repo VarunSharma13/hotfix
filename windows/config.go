@@ -16,6 +16,7 @@ type Config struct {
 	KillDuration     float64  `json:"kill_duration"`      // seconds before kill, default 60
 	KillOnSleep      bool     `json:"kill_on_sleep"`      // kill hot procs on system sleep
 	ProtectActiveApp bool     `json:"protect_active_app"` // never kill the foreground app
+	LaunchAtLogin    bool     `json:"launch_at_login"`    // start automatically at sign-in
 	Whitelist        []string `json:"whitelist"`          // user-managed exclusions
 }
 
@@ -59,8 +60,11 @@ func loadConfig() Config {
 
 	data, err := os.ReadFile(path)
 	if err != nil {
-		// First run or missing file — return defaults and persist them.
+		// First run or missing file — return defaults and persist them. The
+		// installer may already have set the autostart Run value, so reflect the
+		// real registry state rather than a hardcoded default.
 		cfg := defaultConfig()
+		cfg.LaunchAtLogin = launchAtLoginEnabled()
 		_ = saveConfig(cfg)
 		return cfg
 	}
@@ -91,6 +95,11 @@ func loadConfig() Config {
 	if cfg.Whitelist == nil {
 		cfg.Whitelist = defaultWhitelist
 	}
+
+	// The autostart registry value is the source of truth for this toggle (the
+	// installer or the user may change it outside the app), so always reflect
+	// the live registry state rather than the persisted JSON.
+	cfg.LaunchAtLogin = launchAtLoginEnabled()
 
 	return cfg
 }

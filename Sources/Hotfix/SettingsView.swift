@@ -175,6 +175,28 @@ struct SettingsView: View {
                         .tint(Color(hex: "C9461E"))
                         .labelsHidden()
                 }
+
+                BCDivider()
+
+                // Launch at login toggle
+                SettingsRow {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Open at Login")
+                            .font(.system(size: 13, weight: .semibold, design: .rounded))
+                            .foregroundStyle(Color(hex: "141416"))
+                        Text("Start Hotfix automatically when you log in to your Mac")
+                            .font(.system(size: 11, design: .rounded))
+                            .foregroundStyle(Color(hex: "141416").opacity(0.45))
+                    }
+                } trailing: {
+                    Toggle("", isOn: Binding(
+                        get: { prefs.launchAtLogin },
+                        set: { prefs.setLaunchAtLogin($0) }
+                    ))
+                    .toggleStyle(.switch)
+                    .tint(Color(hex: "C9461E"))
+                    .labelsHidden()
+                }
             }
         }
         .padding(.top, 20)
