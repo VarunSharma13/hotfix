@@ -1,0 +1,29 @@
+# Hotfix
+
+> Hotfix is a free, native system-tray app for macOS and Windows that monitors CPU usage in the background and automatically terminates runaway processes before your fan spins up, your battery drains, or your machine thermal-throttles. Built by BuildCraft Labs.
+
+Hotfix runs quietly in the menu bar (macOS) or system tray (Windows). Every few seconds it checks per-process CPU usage; when a process stays above a user-set threshold for a user-set duration, Hotfix kills it and fires a desktop notification. Core system processes (kernel_task, WindowServer, Finder, etc.) are hard-excluded and can never be killed. The macOS app is Swift/SwiftUI; the Windows app is Go. There is no telemetry, no account, and no background HTTP server — it runs fully locally.
+
+## Key features
+
+- Automatic CPU monitoring with a configurable threshold and grace duration
+- One-click kill of runaway processes, with desktop notifications on every kill
+- User-managed whitelist to protect chosen apps
+- Kill-on-sleep option to reclaim CPU before the machine sleeps
+- Hard-coded safety exclusions for critical system processes
+- Silent background auto-updates (per-user install, no admin/UAC required)
+- "Open at login" / "Run at startup" toggle on both platforms
+- Native, lightweight, and free — no Electron, no account, no tracking
+
+## Download
+
+- [Download for macOS](https://hotfix.buildcraft.town/dl/mac): Latest signed DMG (universal, Apple Silicon + Intel). First launch: right-click → Open.
+- [Download for Windows](https://hotfix.buildcraft.town/dl/win): Latest per-user installer (no admin rights needed).
+
+## Links
+
+- [Homepage](https://hotfix.buildcraft.town/): Product overview, features, and downloads
+- [GitHub repository](https://github.com/buildcraftlabs/hotfix): Source code for both platforms
+- [Releases](https://github.com/buildcraftlabs/hotfix/releases): Version history and release notes
+- [Report an issue](https://github.com/buildcraftlabs/hotfix/issues/new): Bug reports and feature requests
+- [BuildCraft Labs](https://buildcraft.town): The maker of Hotfix
