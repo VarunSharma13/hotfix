@@ -108,7 +108,7 @@ A single **pure-Go, CGO-free static binary** with `//go:build linux` on every fi
 
 ### Website & download counter (`docs/`, `worker/`)
 
-The marketing site lives in `docs/` (served by GitHub Pages from `main` at `hotfix.buildcraft.town`). Its Download buttons point at **`hotfix.buildcraft.town/dl/mac`** and **`/dl/win`** (the Worker also serves **`/dl/linux`** and **`/dl/linux-arm64`**; the site has no Linux button yet), handled by a Cloudflare Worker in `worker/` (`worker/src/worker.js`, config `worker/wrangler.toml`):
+The marketing site lives in `docs/` (served by GitHub Pages from `main` at `hotfix.buildcraft.town`). Its Download buttons point at **`hotfix.buildcraft.town/dl/mac`** and **`/dl/win`** and **`/dl/linux`** (the Worker also serves **`/dl/linux-arm64`**, linked from the download note), handled by a Cloudflare Worker in `worker/` (`worker/src/worker.js`, config `worker/wrangler.toml`):
 
 - On each hit it increments a per-platform counter in **Workers KV** (`count:{mac,win}` lifetime totals plus `count:{platform}:YYYY-MM-DD` daily buckets), then **302-redirects to the latest release asset**, resolved live from the GitHub releases API (cached ~300s). So the buttons never need per-release version bumps.
 - The app's **silent auto-updater fetches release assets directly and never hits `/dl`**, so these counts approximate **fresh installs**, kept separate from update traffic. It's a fuzzy proxy: it can't tell a new user from a re-download, and KV's eventual consistency can drop the odd concurrent increment.
