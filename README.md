@@ -2,7 +2,7 @@
 
 **Keep your machine cool.** Hotfix monitors CPU usage and automatically terminates runaway processes before your fan spins up and your battery drains — on macOS, Windows, and Linux.
 
-Built by [BuildCraft Labs](https://github.com/buildcraftlabs).
+Built by [BuildCraft Labs](https://github.com/BuildCraftLabsLLP).
 
 ---
 
@@ -20,9 +20,9 @@ Claude extensions, AI tools, and background daemons run rogue — consuming 50�
 
 | Platform | Download | Requirements |
 |----------|----------|-------------|
-| **macOS** | [Hotfix.dmg](https://github.com/buildcraftlabs/hotfix/releases/latest) | macOS 13+ · Apple Silicon or Intel |
-| **Windows** | [Hotfix-Setup.exe](https://github.com/buildcraftlabs/hotfix/releases/latest) | Windows 11 · x64 |
-| **Linux** | [Hotfix-…-Linux-x86_64.tar.gz](https://github.com/buildcraftlabs/hotfix/releases/latest) | x86-64 or arm64 · a desktop with a system tray (StatusNotifierItem) |
+| **macOS** | [Hotfix.dmg](https://github.com/BuildCraftLabsLLP/hotfix/releases/latest) | macOS 13+ · Apple Silicon or Intel |
+| **Windows** | [Hotfix-Setup.exe](https://github.com/BuildCraftLabsLLP/hotfix/releases/latest) | Windows 11 · x64 |
+| **Linux** | [Hotfix-…-Linux-x86_64.tar.gz](https://github.com/BuildCraftLabsLLP/hotfix/releases/latest) | x86-64 or arm64 · a desktop with a system tray (StatusNotifierItem) |
 
 > **Windows:** the installer is per-user (no admin) — it installs to `%LOCALAPPDATA%\Programs\Hotfix`, adds an uninstaller to **Apps & features**, and updates itself silently in the background. Delete the downloaded `Hotfix-Setup.exe` once it's installed.
 
@@ -74,7 +74,7 @@ The Linux build has no settings window — **the tray menu is the settings UI**.
 Requires Xcode Command Line Tools.
 
 ```bash
-git clone https://github.com/buildcraftlabs/hotfix.git
+git clone https://github.com/BuildCraftLabsLLP/hotfix.git
 cd hotfix
 bash scripts/build.sh
 open "dist/Hotfix.dmg"
@@ -84,7 +84,7 @@ open "dist/Hotfix.dmg"
 Requires Go 1.22+.
 
 ```powershell
-git clone https://github.com/buildcraftlabs/hotfix.git
+git clone https://github.com/BuildCraftLabsLLP/hotfix.git
 cd hotfix\windows
 go generate ./...   # embeds the flame icon + version metadata (resource.syso)
 go build -ldflags "-H windowsgui -s -w" -o ..\dist\Hotfix.exe .
@@ -97,7 +97,7 @@ go build -ldflags "-H windowsgui -s -w" -o ..\dist\Hotfix.exe .
 Requires Go 1.22+. Pure Go — no CGO, GTK, or other system libraries needed, and it cross-compiles from any OS with `GOOS=linux`.
 
 ```bash
-git clone https://github.com/buildcraftlabs/hotfix.git
+git clone https://github.com/BuildCraftLabsLLP/hotfix.git
 cd hotfix/linux
 go test ./...
 CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o ../dist/hotfix .
@@ -138,4 +138,4 @@ hotfix/
 
 ## License
 
-MIT © [BuildCraft Labs](https://github.com/buildcraftlabs)
+MIT © [BuildCraft Labs](https://github.com/BuildCraftLabsLLP)

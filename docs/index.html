@@ -214,8 +214,8 @@
         "applicationSubCategory": "System Monitor",
         "operatingSystem": "macOS 13+, Windows 11",
         "url": "https://hotfix.buildcraft.town/",
-        "downloadUrl": "https://github.com/buildcraftlabs/hotfix/releases/latest",
-        "softwareHelp": "https://github.com/buildcraftlabs/hotfix",
+        "downloadUrl": "https://github.com/BuildCraftLabsLLP/hotfix/releases/latest",
+        "softwareHelp": "https://github.com/BuildCraftLabsLLP/hotfix",
         "image": "https://hotfix.buildcraft.town/og-image.png",
         "description": "Hotfix is a free, native system-tray app for macOS and Windows that monitors CPU usage and automatically terminates runaway processes before your fan spins up, your machine overheats, or your battery drains.",
         "isAccessibleForFree": true,
@@ -241,7 +241,7 @@
         "@id": "https://buildcraft.town/#organization",
         "name": "BuildCraft Labs",
         "url": "https://buildcraft.town",
-        "sameAs": [ "https://github.com/buildcraftlabs" ]
+        "sameAs": [ "https://github.com/BuildCraftLabsLLP" ]
       },
       {
         "@type": "WebSite",
@@ -315,7 +315,7 @@
     <span>Hotfix</span>
     <span class="nav-badge">FREE</span>
   </div>
-  <a class="nav-cta" href="https://github.com/buildcraftlabs/hotfix/releases/latest">Download</a>
+  <a class="nav-cta" href="https://github.com/BuildCraftLabsLLP/hotfix/releases/latest">Download</a>
 </nav>
 
 <!-- Hero -->
@@ -554,11 +554,11 @@
   <div class="footer-right">
     <div>© 2026 BuildCraft Labs</div>
     <div style="margin-top:4px;">
-      <a href="https://github.com/buildcraftlabs/hotfix">GitHub</a>
+      <a href="https://github.com/BuildCraftLabsLLP/hotfix">GitHub</a>
       &nbsp;·&nbsp;
-      <a href="https://github.com/buildcraftlabs/hotfix/releases">Releases</a>
+      <a href="https://github.com/BuildCraftLabsLLP/hotfix/releases">Releases</a>
       &nbsp;·&nbsp;
-      <a href="https://github.com/buildcraftlabs/hotfix/issues/new">Report a Bug</a>
+      <a href="https://github.com/BuildCraftLabsLLP/hotfix/issues/new">Report a Bug</a>
     </div>
   </div>
 </footer>
@@ -572,7 +572,7 @@
   // Live download counts from GitHub Releases (falls back to baked-in numbers on error / rate-limit)
   (async function () {
     try {
-      const res = await fetch('https://api.github.com/repos/buildcraftlabs/hotfix/releases?per_page=100', {
+      const res = await fetch('https://api.github.com/repos/BuildCraftLabsLLP/hotfix/releases?per_page=100', {
         headers: { 'Accept': 'application/vnd.github+json' }
       });
       if (!res.ok) return;

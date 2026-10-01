@@ -392,12 +392,12 @@ struct SettingsView: View {
                     }
                     Spacer()
                     HStack(spacing: 12) {
-                        Link("GitHub", destination: URL(string: "https://github.com/buildcraftlabs/hotfix")!)
+                        Link("GitHub", destination: URL(string: "https://github.com/BuildCraftLabsLLP/hotfix")!)
                             .font(.system(size: 11, weight: .semibold, design: .rounded))
                             .foregroundStyle(Color(hex: "C9461E"))
                         Text("·")
                             .foregroundStyle(Color(hex: "141416").opacity(0.25))
-                        Link("Report Issue", destination: URL(string: "https://github.com/buildcraftlabs/hotfix/issues/new")!)
+                        Link("Report Issue", destination: URL(string: "https://github.com/BuildCraftLabsLLP/hotfix/issues/new")!)
                             .font(.system(size: 11, weight: .semibold, design: .rounded))
                             .foregroundStyle(Color(hex: "C9461E"))
                     }

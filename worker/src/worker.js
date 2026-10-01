@@ -13,7 +13,7 @@
 
 import { handleLicense } from "./license.js";
 
-const REPO = "buildcraftlabs/hotfix";
+const REPO = "BuildCraftLabsLLP/hotfix";
 const LATEST_API = `https://api.github.com/repos/${REPO}/releases/latest`;
 const ASSET_TTL = 300; // seconds to cache the resolved asset URL
 
