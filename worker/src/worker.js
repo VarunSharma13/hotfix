@@ -19,6 +19,8 @@ const ASSET_TTL = 300; // seconds to cache the resolved asset URL
 const PICKERS = {
   mac: (name) => name.endsWith(".dmg"),
   win: (name) => name.startsWith("Hotfix-Setup-") && name.endsWith(".exe"),
+  linux: (name) => name.endsWith("-Linux-x86_64.tar.gz"),
+  "linux-arm64": (name) => name.endsWith("-Linux-arm64.tar.gz"),
 };
 
 export default {

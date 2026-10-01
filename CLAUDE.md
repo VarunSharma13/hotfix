@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-Hotfix is a dual-platform (macOS + Windows) system tray app that monitors CPU usage and kills runaway processes before fans spin up. The macOS app is written in Swift/SwiftUI; the Windows app is written in Go.
+Hotfix is a cross-platform (macOS + Windows + Linux) system tray app that monitors CPU usage and kills runaway processes before fans spin up. The macOS app is written in Swift/SwiftUI; the Windows and Linux apps are written in Go (two separate modules, `windows/` and `linux/`, that share no code).
 
 ## Build Commands
 
@@ -37,13 +37,23 @@ go build -ldflags "-H windowsgui -s -w" -o ..\dist\Hotfix.exe .
 > colored `Hotfix.ico` for the .exe/installer. Regenerate all of them with
 > `windows/assets/gen-icons.ps1` (PowerShell + .NET, no external deps).
 
+### Linux
+```bash
+cd linux
+go vet ./... && go test ./...
+# Pure Go, static. Cross-compiles from any OS (set GOOS=linux; GOARCH=amd64|arm64).
+CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o ../dist/hotfix .
+```
+
+> From a non-Linux machine, `GOOS=linux go vet ./...` type-checks the code **and** the tests, but the tests themselves only run on Linux (CI's `build-linux` job).
+
 ## Release Process
 
-1. Bump the version in: `Sources/Hotfix/UpdateChecker.swift` (`currentVersion`), `Resources/Info.plist` (`CFBundleShortVersionString` **and** bump `CFBundleVersion`), `windows/updater.go` (`currentVersion`), and the hardcoded version label in `windows/assets/settings.html` (About card). `windows/main.go` only references `updater.go`'s `currentVersion`, so no literal there. (Version-comparison fixtures in `windows/updater_test.go` are not app versions — leave them.) The exe-metadata version in `windows/versioninfo.json` and the installer version are **stamped automatically** from the release tag by CI — don't bump them by hand. The site's **download buttons carry no version** — they point at the counting redirect (`hotfix.buildcraft.town/dl/{mac,win}`), which resolves the latest release asset at request time, so there's nothing to bump in `docs/index.html`.
-2. Create a GitHub release tagged `v<version>` — the `Build` workflow runs automatically on `macos-latest` and `windows-2025`. Each release gets **three** version+OS-named assets: `Hotfix-v<version>-macOS.dmg`, `Hotfix-v<version>-Windows.exe` (the **raw exe**, downloaded by the in-place auto-updater), and `Hotfix-Setup-v<version>-Windows.exe` (the **per-user installer**, what the website's Windows button links to). There are no longer any plain `Hotfix.dmg` / `Hotfix.exe` assets. Pages serves `docs/` from `main`. (The legacy `update-site` CI job that rewrote versioned download URLs in `docs/index.html` is now a **no-op** — the buttons point at the version-less `/dl/*` redirect; see **Website & download counter** below.)
-3. A user-facing feature is **not shipped** until this release is cut and the Build run succeeds with all three assets attached — the website serves only released binaries.
+1. Bump the version in: `Sources/Hotfix/UpdateChecker.swift` (`currentVersion`), `Resources/Info.plist` (`CFBundleShortVersionString` **and** bump `CFBundleVersion`), `windows/updater.go` (`currentVersion`), `linux/updater.go` (`currentVersion`), and the hardcoded version label in `windows/assets/settings.html` (About card). `windows/main.go` only references `updater.go`'s `currentVersion`, so no literal there. (Version-comparison fixtures in `windows/updater_test.go` are not app versions — leave them.) The exe-metadata version in `windows/versioninfo.json` and the installer version are **stamped automatically** from the release tag by CI — don't bump them by hand. The site's **download buttons carry no version** — they point at the counting redirect (`hotfix.buildcraft.town/dl/{mac,win}`), which resolves the latest release asset at request time, so there's nothing to bump in `docs/index.html`.
+2. Create a GitHub release tagged `v<version>` — the `Build` workflow runs automatically on `macos-latest`, `windows-2025`, and `ubuntu-latest`. Each release gets these version+OS-named assets: `Hotfix-v<version>-macOS.dmg`, `Hotfix-v<version>-Windows.exe` (the **raw exe**, downloaded by the in-place auto-updater), `Hotfix-Setup-v<version>-Windows.exe` (the **per-user installer**, what the website's Windows button links to), and for Linux, per CPU (`x86_64`, `arm64`), `Hotfix-v<version>-Linux-<arch>` (the **raw binary**, downloaded by the in-place auto-updater) and `Hotfix-v<version>-Linux-<arch>.tar.gz` (binary + `install.sh`/`uninstall.sh` + icon; what `/dl/linux` redirects to). There are no longer any plain `Hotfix.dmg` / `Hotfix.exe` assets. Pages serves `docs/` from `main`. (The legacy `update-site` CI job that rewrote versioned download URLs in `docs/index.html` is now a **no-op** — the buttons point at the version-less `/dl/*` redirect; see **Website & download counter** below.)
+3. A user-facing feature is **not shipped** until this release is cut and the Build run succeeds with all assets attached — the website serves only released binaries.
 
-> Logs: macOS → `~/Library/Logs/Hotfix/hotfix.log`; Windows → `%APPDATA%\Hotfix\hotfix.log`. Both surface in Settings via an in-app log viewer. Desktop notifications fire on every successful kill (macOS notification center; Windows WinRT toast).
+> Logs: macOS → `~/Library/Logs/Hotfix/hotfix.log`; Windows → `%APPDATA%\Hotfix\hotfix.log`; Linux → `~/.local/state/hotfix/hotfix.log`. macOS and Windows surface it in Settings via an in-app log viewer; Linux opens it from the tray's "View Log". Desktop notifications fire on every successful kill (macOS notification center; Windows WinRT toast; Linux freedesktop notification over D-Bus).
 
 ## Architecture
 
@@ -77,9 +87,25 @@ A single Go binary with `//go:build windows` on every file. No CGO; uses `github
 
 All console-spawning child processes (`wmic`, `taskkill`, `powershell`) use `HideWindow: true` in `SysProcAttr` to prevent flash windows (since the binary is built with `-H windowsgui`).
 
+### Linux (`linux/`)
+
+A single **pure-Go, CGO-free static binary** with `//go:build linux` on every file (its own module, `linux/go.mod`). Tray via `fyne.io/systray` (StatusNotifierItem over D-Bus — no GTK/AppIndicator libraries); D-Bus via `github.com/godbus/dbus/v5`. Keeping it CGO-free is deliberate: it is what lets one binary run on every distro and lets the updater swap a single file. That rules out an embedded webview, so there is **no settings window — the tray menu is the settings UI**.
+
+- **`main.go`** — Entry point (`--version` flag, single-instance `flock` on `hotfix.lock`), the tray menu, and config application. Toggles are checkbox items; CPU Threshold / Kill After are submenus of presets (the current value is shown in the parent label, so a hand-edited non-preset value is still visible). `updateConfig` → `applyConfig` (validate, autostart, save) → `applyRuntime` (start/stop monitor, `syncMenu`).
+- **`monitor.go`** — 5-second poll loop. `evaluate` (pure, unit-tested) applies the threshold, exclusions and hot-duration tracking in `hotMap`; `killProcess` sends `SIGTERM`, then `SIGKILL` after 3s if the same process (PID + start time) is still alive. Only processes owned by the current user are candidates (unless root). Exclusions match both the kernel task name (truncated to 15 chars) and the executable's file name.
+- **`procstat.go`** — Reads `/proc/<pid>/stat` directly (no `ps`). CPU% is the utime+stime delta between two polls, as a percent of **one core** (like `top`; can exceed 100). The first poll only records a baseline.
+- **`config.go`** — JSON config at `~/.config/hotfix/config.json` (same keys as Windows). Missing keys keep defaults. Saves are atomic; `watchConfigFile` polls the mtime and **reloads on external edits** — this is how the whitelist is edited ("Edit Config File…" opens it via `xdg-open`). A malformed file is ignored, never replaced by defaults.
+- **`startup.go`** — "Start at Login" = an XDG autostart entry (`~/.config/autostart/hotfix.desktop`) pointing at the running binary. The **file is the source of truth** (same pattern as the Windows Run key): `readConfigFile` overwrites `LaunchAtLogin` from it, and `install.sh --autostart` writes the same file.
+- **`foreground.go`** — "Protect Active App", best-effort: `hyprctl` (Hyprland), `swaymsg` (sway), `xdotool`/`xprop` (X11/XWayland). GNOME/KDE Wayland expose no focused-window query, so it returns 0 there (logged once).
+- **`sleep.go`** — Kill-on-sleep via systemd-logind's `PrepareForSleep` signal, holding a `delay` inhibitor lock so the kills are sent before suspend. On resume the hot map and CPU baseline are reset.
+- **`notify.go`** — `org.freedesktop.Notifications.Notify` on the session bus (no `notify-send` dependency).
+- **`updater.go`** — Same polling schedule as Windows. Downloads the raw `Hotfix-v…-Linux-<arch>` asset (`pickRawBinaryURL` skips the `.tar.gz`), checks the ELF magic, renames it over the running executable and re-`exec`s. If the install directory isn't writable (not a per-user install) it skips the self-update.
+- **`crashreport.go`**, **`log.go`** — Ports of the Windows crash marker / pre-filled GitHub issue flow and the rotating file logger. State (log, `lastcrash.txt`, lock) lives in `~/.local/state/hotfix/`.
+- **`packaging/install.sh`** / **`uninstall.sh`** — Per-user install to `~/.local/bin/hotfix` plus an app-menu `.desktop` entry and icon (`icon/AppIcon.svg`, bundled as `hotfix.svg` by CI). No root.
+
 ### Website & download counter (`docs/`, `worker/`)
 
-The marketing site lives in `docs/` (served by GitHub Pages from `main` at `hotfix.buildcraft.town`). Its Download buttons point at **`hotfix.buildcraft.town/dl/mac`** and **`/dl/win`**, handled by a Cloudflare Worker in `worker/` (`worker/src/worker.js`, config `worker/wrangler.toml`):
+The marketing site lives in `docs/` (served by GitHub Pages from `main` at `hotfix.buildcraft.town`). Its Download buttons point at **`hotfix.buildcraft.town/dl/mac`** and **`/dl/win`** (the Worker also serves **`/dl/linux`** and **`/dl/linux-arm64`**; the site has no Linux button yet), handled by a Cloudflare Worker in `worker/` (`worker/src/worker.js`, config `worker/wrangler.toml`):
 
 - On each hit it increments a per-platform counter in **Workers KV** (`count:{mac,win}` lifetime totals plus `count:{platform}:YYYY-MM-DD` daily buckets), then **302-redirects to the latest release asset**, resolved live from the GitHub releases API (cached ~300s). So the buttons never need per-release version bumps.
 - The app's **silent auto-updater fetches release assets directly and never hits `/dl`**, so these counts approximate **fresh installs**, kept separate from update traffic. It's a fuzzy proxy: it can't tell a new user from a re-download, and KV's eventual consistency can drop the odd concurrent increment.
@@ -88,7 +114,7 @@ The marketing site lives in `docs/` (served by GitHub Pages from `main` at `hotf
 
 ## Key Constraints
 
-- **Tests** — Go unit tests live in `windows/*_test.go` (build-tagged `//go:build windows`). They run on the Windows CI runner via `go test ./...`. Swift tests run via `swift test` on the macOS runner. There is no way to execute the Windows tests locally on macOS.
+- **Tests** — Go unit tests live in `windows/*_test.go` (build-tagged `//go:build windows`). They run on the Windows CI runner via `go test ./...`. Swift tests run via `swift test` on the macOS runner. There is no way to execute the Windows tests locally on macOS. The Linux tests live in `linux/*_test.go` (build-tagged `//go:build linux`) and run on the Ubuntu CI runner; they can't be executed on Windows or macOS either.
 - **Version must be bumped in multiple files** — forgetting one will cause the update checker to behave incorrectly or CI to produce a mismatched binary.
 - macOS binary is **not notarized**; users must right-click → Open on first launch.
 - Windows build sets `-H windowsgui`, so `fmt.Print` / `log` output goes nowhere — use the file logger (`initLog` / `logf`).
