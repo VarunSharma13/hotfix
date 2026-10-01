@@ -58,6 +58,8 @@ Settings are accessible from the tray icon → **Settings**.
 
 ### Linux notes
 
+**Hotfix for Linux is a $1/month subscription, per computer.** On first launch the tray shows **Subscribe ($1/month)…**, which opens a Stripe checkout page in your browser; the app unlocks by itself a few seconds after payment. The subscription is tied to that one machine (no license key to enter or share) — **Manage Subscription…** opens Stripe's billing portal to update your card or cancel. Until subscribed, monitoring is off. A subscribed machine keeps working offline for up to 72 hours between license checks.
+
 The Linux build has no settings window — **the tray menu is the settings UI**. Toggles are checkboxes, and CPU Threshold / Kill After are submenus of presets. For any other value, and for the exclusion list, choose **Edit Config File…** (`~/.config/hotfix/config.json`); changes are picked up automatically when you save.
 
 - **CPU % is per core**, as in `top`: a process using two full cores reads 200%.
@@ -101,6 +103,8 @@ go test ./...
 CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o ../dist/hotfix .
 ```
 
+A plain local build like this does not enforce the subscription. Release builds do: CI stamps the license public key in with `-X main.licensePublicKey=…` (see [`worker/README.md`](worker/README.md#licensing-linux-subscription)).
+
 ## Releasing a New Version
 
 Releasing is fully automated. All binaries are built and attached by CI on every new release.
@@ -127,7 +131,7 @@ hotfix/
 │   └── *.go            # Go source files
 ├── icon/               # App icon assets
 ├── docs/               # Marketing website (GitHub Pages, hotfix.buildcraft.town)
-├── worker/             # Cloudflare Worker: /dl/* download-counter + redirect
+├── worker/             # Cloudflare Worker: /dl/* download counter + /license/* Linux licensing API (Stripe)
 ├── landing-page/       # Older marketing site
 └── .github/workflows/  # CI (macOS + Windows + Linux builds, site update)
 ```

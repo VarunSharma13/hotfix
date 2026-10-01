@@ -45,6 +45,8 @@ go vet ./... && go test ./...
 CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o ../dist/hotfix .
 ```
 
+> A plain build does **not** enforce the subscription (dev build). Enforcement is compiled in by `-ldflags "-X main.licensePublicKey=<base64>"`, which CI does from the repo variable `LICENSE_PUBLIC_KEY`; `hotfix --version` says "dev build" when it's absent.
+>
 > From a non-Linux machine, `GOOS=linux go vet ./...` type-checks the code **and** the tests, but the tests themselves only run on Linux (CI's `build-linux` job).
 
 ## Release Process
@@ -100,6 +102,7 @@ A single **pure-Go, CGO-free static binary** with `//go:build linux` on every fi
 - **`sleep.go`** — Kill-on-sleep via systemd-logind's `PrepareForSleep` signal, holding a `delay` inhibitor lock so the kills are sent before suspend. On resume the hot map and CPU baseline are reset.
 - **`notify.go`** — `org.freedesktop.Notifications.Notify` on the session bus (no `notify-send` dependency).
 - **`updater.go`** — Same polling schedule as Windows. Downloads the raw `Hotfix-v…-Linux-<arch>` asset (`pickRawBinaryURL` skips the `.tar.gz`), checks the ELF magic, renames it over the running executable and re-`exec`s. If the install directory isn't writable (not a per-user install) it skips the self-update.
+- **`license.go`** — **Subscription gate ($1/month, one machine).** `machineFingerprint` = HMAC-SHA256 keyed by `/etc/machine-id` (fallback `/var/lib/dbus/machine-id`) — the raw ID never leaves the machine. `refreshLicense` GETs `/license/verify?fp=…` and verifies the Ed25519-signed token (`parseLicenseToken`: signature, fingerprint match, expiry) against the public key stamped in at build time. Active → token cached in `~/.local/state/hotfix/license.token` (72h offline grace); inactive → cache cleared and the app locks: `applyRuntime` never starts the monitor unless `licensed()`, settings items are greyed out, and the tray shows **Subscribe ($1/month)…** / **Refresh License** (opens `/license/checkout?fp=…` in the browser, then polls every 10s for 15 min). Re-verified every 6h. **No Stripe key and no private key is ever in the client.** A build with an empty `licensePublicKey` doesn't enforce (local dev); CI refuses to release one.
 - **`crashreport.go`**, **`log.go`** — Ports of the Windows crash marker / pre-filled GitHub issue flow and the rotating file logger. State (log, `lastcrash.txt`, lock) lives in `~/.local/state/hotfix/`.
 - **`packaging/install.sh`** / **`uninstall.sh`** — Per-user install to `~/.local/bin/hotfix` plus an app-menu `.desktop` entry and icon (`icon/AppIcon.svg`, bundled as `hotfix.svg` by CI). No root.
 
@@ -109,8 +112,9 @@ The marketing site lives in `docs/` (served by GitHub Pages from `main` at `hotf
 
 - On each hit it increments a per-platform counter in **Workers KV** (`count:{mac,win}` lifetime totals plus `count:{platform}:YYYY-MM-DD` daily buckets), then **302-redirects to the latest release asset**, resolved live from the GitHub releases API (cached ~300s). So the buttons never need per-release version bumps.
 - The app's **silent auto-updater fetches release assets directly and never hits `/dl`**, so these counts approximate **fresh installs**, kept separate from update traffic. It's a fuzzy proxy: it can't tell a new user from a re-download, and KV's eventual consistency can drop the odd concurrent increment.
+- **Licensing API (`worker/src/license.js`, routes `/license/*`)** — backend for the Linux subscription. `verify` returns an Ed25519-signed status token for a machine fingerprint; `checkout` creates a Stripe Checkout Session (subscription, $1/month inline price or `STRIPE_PRICE_ID`) with the fingerprint in `client_reference_id` + subscription metadata; `success` activates right after payment; `webhook` (HMAC signature-verified, 5-min tolerance) tracks `customer.subscription.*` so renewals/cancellations flip the KV record `lic:<fp>` in the separate `HOTFIX_LICENSE` namespace; `portal` opens Stripe's billing portal. Secrets `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `LICENSE_SIGNING_KEY` are `wrangler secret`s — never committed, never in the app. The token format is mirrored in `linux/license.go` and pinned by a cross-language fixture test. Tests: `node --test worker/test/license.test.mjs` (no deps; also run by CI's `build-linux` job). Setup steps are in `worker/README.md`.
 - **`GET /dl/stats?key=<STATS_TOKEN>`** returns the counters as JSON. `STATS_TOKEN` (and an optional `GITHUB_TOKEN` for higher GitHub-API limits) are Cloudflare **secrets** set via `wrangler secret put` — never committed.
-- Deploy with `wrangler deploy` from `worker/` (see `worker/README.md`). Requires `buildcraft.town` DNS proxied through Cloudflare so the `/dl/*` route intercepts before Pages.
+- Deploy with `wrangler deploy` from `worker/` (see `worker/README.md`). **The Worker must be deployed with licensing configured before a Linux release ships**, or every Linux user is locked out. Requires `buildcraft.town` DNS proxied through Cloudflare so the `/dl/*` route intercepts before Pages.
 
 ## Key Constraints
 
