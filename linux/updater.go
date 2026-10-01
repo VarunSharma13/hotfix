@@ -169,7 +169,7 @@ func downloadAndReplace(binURL string, auto bool) {
 	tmp, err := os.CreateTemp(filepath.Dir(selfPath), ".hotfix-update-*")
 	if err != nil {
 		logf("updater: install location not writable (%v); skipping self-update", err)
-		setTrayStatus("Watching", false)
+		setTrayStatus(baseStatus(getConfig()), false)
 		if !auto {
 			openURL(releasesPageURL)
 		}
@@ -235,10 +235,7 @@ func downloadAndReplace(binURL string, auto bool) {
 		// Still running the old code; the new binary takes over on next launch.
 		initLog()
 		logf("updater: relaunch failed (%v); update applies on next start", err)
-		if getConfig().Enabled {
-			startMonitor()
-		}
-		setTrayStatus("Watching", false)
+		applyRuntime(getConfig())
 	}
 }
 

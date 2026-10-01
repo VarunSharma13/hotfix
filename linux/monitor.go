@@ -142,7 +142,7 @@ func monitorLoop(stop <-chan struct{}) {
 // checkProcesses samples /proc, evaluates thresholds, and kills when warranted.
 func checkProcesses() {
 	cfg := getConfig()
-	if !cfg.Enabled {
+	if !cfg.Enabled || !licensed() {
 		return
 	}
 

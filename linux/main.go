@@ -46,6 +46,12 @@ var (
 	mProtect   *systray.MenuItem
 	mStartup   *systray.MenuItem
 
+	// Subscription items (see license.go): Subscribe/Refresh show while the
+	// app is locked, Manage while it is subscribed.
+	mSubscribe *systray.MenuItem
+	mRefresh   *systray.MenuItem
+	mManage    *systray.MenuItem
+
 	thresholdItems []presetItem
 	durationItems  []presetItem
 
@@ -55,7 +61,11 @@ var (
 
 func main() {
 	if len(os.Args) > 1 && (os.Args[1] == "--version" || os.Args[1] == "-v") {
-		fmt.Println("Hotfix", currentVersion)
+		if licenseEnforced() {
+			fmt.Println("Hotfix", currentVersion)
+		} else {
+			fmt.Println("Hotfix", currentVersion, "(dev build: licensing not enforced)")
+		}
 		return
 	}
 
@@ -114,6 +124,10 @@ func onReady() {
 	// Build menu.
 	mStatus = systray.AddMenuItem("Hotfix — Watching", "")
 	mStatus.Disable()
+	mSubscribe = systray.AddMenuItem("Subscribe ($1/month)…", "Unlock Hotfix on this computer")
+	mRefresh = systray.AddMenuItem("Refresh License", "Check again for an active subscription")
+	mSubscribe.Hide()
+	mRefresh.Hide()
 	systray.AddSeparator()
 
 	mToggle = systray.AddMenuItemCheckbox("Enable Monitoring", "", false)
@@ -139,11 +153,18 @@ func onReady() {
 
 	mConfig := systray.AddMenuItem("Edit Config File…", "Edit the whitelist and other settings")
 	mLog := systray.AddMenuItem("View Log", "Open the Hotfix log")
+	mManage = systray.AddMenuItem("Manage Subscription…", "Update payment details or cancel")
+	mManage.Hide()
 	mUpdate := systray.AddMenuItem("Check for Updates", "Check GitHub for a newer release")
 	systray.AddSeparator()
 	mQuit := systray.AddMenuItem("Quit", "Quit Hotfix")
 
-	// Apply the loaded config: starts the monitor if enabled and syncs the menu.
+	// Verify the subscription (a cached license unlocks immediately; the
+	// server check continues in the background and locks/unlocks as it lands).
+	startLicenseWatcher()
+
+	// Apply the loaded config: starts the monitor if licensed and enabled, and
+	// syncs the menu.
 	applyRuntime(getConfig())
 
 	// Watch for system suspend (KillOnSleep support).
@@ -161,6 +182,9 @@ func onReady() {
 	onClick(mSleep, "kill-on-sleep", func() { updateConfig(func(c *Config) { c.KillOnSleep = !c.KillOnSleep }) })
 	onClick(mProtect, "protect-active", func() { updateConfig(func(c *Config) { c.ProtectActiveApp = !c.ProtectActiveApp }) })
 	onClick(mStartup, "start-at-login", func() { updateConfig(func(c *Config) { c.LaunchAtLogin = !c.LaunchAtLogin }) })
+	onClick(mSubscribe, "subscribe", openSubscribePage)
+	onClick(mRefresh, "refresh-license", recheckLicenseNow)
+	onClick(mManage, "manage-subscription", openManagePage)
 	onClick(mConfig, "edit-config", openConfigFile)
 	onClick(mLog, "view-log", openLogFile)
 	onClick(mUpdate, "update", func() { safeGo("update", func() { checkForUpdates(false) }) })
@@ -227,16 +251,28 @@ func applyConfig(cfg Config) error {
 }
 
 // applyRuntime starts/stops the monitor to match cfg.Enabled and refreshes the
-// tray. Both monitor calls are idempotent.
+// tray. Without an active subscription the monitor never runs, whatever the
+// config says. Both monitor calls are idempotent.
 func applyRuntime(cfg Config) {
-	if cfg.Enabled {
+	if licensed() && cfg.Enabled {
 		startMonitor()
-		setTrayStatus("Watching", false)
 	} else {
 		stopMonitor()
-		setTrayStatus("Disabled", false)
 	}
+	setTrayStatus(baseStatus(cfg), false)
 	syncMenu()
+}
+
+// baseStatus is the resting tray status label for cfg.
+func baseStatus(cfg Config) string {
+	switch {
+	case !licensed():
+		return licenseStatusLabel()
+	case cfg.Enabled:
+		return "Watching"
+	default:
+		return "Disabled"
+	}
 }
 
 // syncMenu updates every checkbox and preset label to reflect the config.
@@ -247,6 +283,20 @@ func syncMenu() {
 		return
 	}
 	cfg := getConfig()
+
+	// Locked: offer Subscribe / Refresh and grey out the settings. Subscribed
+	// (in a build that enforces licensing): offer Manage Subscription.
+	ok := licensed()
+	setVisible(mSubscribe, !ok)
+	setVisible(mRefresh, !ok)
+	setVisible(mManage, ok && licenseEnforced())
+	for _, it := range []*systray.MenuItem{mToggle, mThreshold, mDuration, mSleep, mProtect} {
+		if ok {
+			it.Enable()
+		} else {
+			it.Disable()
+		}
+	}
 
 	setChecked(mToggle, cfg.Enabled)
 	setChecked(mSleep, cfg.KillOnSleep)
@@ -262,6 +312,14 @@ func syncMenu() {
 	mDuration.SetTitle("Kill After: " + formatDuration(cfg.KillDuration))
 	for _, p := range durationItems {
 		setChecked(p.item, p.value == cfg.KillDuration)
+	}
+}
+
+func setVisible(item *systray.MenuItem, on bool) {
+	if on {
+		item.Show()
+	} else {
+		item.Hide()
 	}
 }
 
@@ -333,11 +391,7 @@ func restoreTrayStatusAfter(d time.Duration) {
 		if mStatus == nil {
 			return
 		}
-		if getConfig().Enabled {
-			setTrayStatus("Watching", false)
-		} else {
-			setTrayStatus("Disabled", false)
-		}
+		setTrayStatus(baseStatus(getConfig()), false)
 		systray.SetTooltip(defaultTooltip)
 	})
 }

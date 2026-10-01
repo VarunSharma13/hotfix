@@ -11,6 +11,8 @@
 // re-downloading from the site, and KV's read-modify-write can drop the odd
 // concurrent increment. Good enough to separate installs from update traffic.
 
+import { handleLicense } from "./license.js";
+
 const REPO = "buildcraftlabs/hotfix";
 const LATEST_API = `https://api.github.com/repos/${REPO}/releases/latest`;
 const ASSET_TTL = 300; // seconds to cache the resolved asset URL
@@ -26,6 +28,12 @@ const PICKERS = {
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
+
+    // Linux subscription licensing (Stripe + signed license tokens).
+    if (url.pathname === "/license" || url.pathname.startsWith("/license/")) {
+      return handleLicense(request, env, url);
+    }
+
     const seg = url.pathname.replace(/^\/dl\/?/, "").replace(/\/$/, "");
 
     if (seg === "stats") return stats(request, env, url);
